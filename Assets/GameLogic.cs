@@ -6,6 +6,8 @@ using System.Linq;
 
 public class GameLogic : MonoBehaviour {
 
+	public GameObject resultPanel;
+	public Text resultText;
 
 	public List<Button> buttonField;
 	public Sprite whiteCircle;
@@ -34,13 +36,14 @@ public class GameLogic : MonoBehaviour {
 				int copy_j = j;
 				buttonField [index].onClick.AddListener (() => 
 					{
-						if(currentTurn == Turn.Player)
+						if(currentTurn == Turn.Player && field[copy_i, copy_j] == Cell.None)
 						{
 							//Debug.Log(copy_i.ToString() + " " + copy_j.ToString() + " " + index.ToString());
 							buttonField[index].GetComponent<Image>().sprite = whiteCircle;
-							if(field[copy_i, copy_j] == Cell.None)
-								field [copy_i, copy_j] = Cell.White;
+							field [copy_i, copy_j] = Cell.White;
+							checkGame ();
 							currentTurn = Turn.AI;
+
 						}
 					});
 			}
@@ -79,18 +82,15 @@ public class GameLogic : MonoBehaviour {
 
 	private bool decision(Dictionary<int, Cell> board, Cell player)
 	{
-		if (
-			(board [0] == player && board [1] == player && board [2] == player) ||
-			(board [3] == player && board [4] == player && board [5] == player) ||
-			(board [6] == player && board [7] == player && board [8] == player) ||
-			(board [0] == player && board [3] == player && board [6] == player) ||
-			(board [1] == player && board [4] == player && board [7] == player) ||
-			(board [2] == player && board [5] == player && board [8] == player) ||
-			(board [0] == player && board [4] == player && board [8] == player) ||
-			(board [2] == player && board [4] == player && board [6] == player))
-			return true;
-		else
-			return false;
+		
+		return (board [0] == player && board [1] == player && board [2] == player) ||
+		(board [3] == player && board [4] == player && board [5] == player) ||
+		(board [6] == player && board [7] == player && board [8] == player) ||
+		(board [0] == player && board [3] == player && board [6] == player) ||
+		(board [1] == player && board [4] == player && board [7] == player) ||
+		(board [2] == player && board [5] == player && board [8] == player) ||
+		(board [0] == player && board [4] == player && board [8] == player) ||
+		(board [2] == player && board [4] == player && board [6] == player);
 	}
 
 
@@ -119,7 +119,7 @@ public class GameLogic : MonoBehaviour {
 			
 			Move move;
 
-			var updatedBoard = copyBoard(board);
+			var updatedBoard = board.Clone () as Cell[,];
 			updatedBoard [pair.x, pair.y] = makeMoveByTurn (player);
 			if (player == Turn.AI) {
 				move = minimax (updatedBoard, Turn.Player, pair);
@@ -162,10 +162,11 @@ public class GameLogic : MonoBehaviour {
 
 	private State getState(bool decision, Turn turn)
 	{
-		if (decision && turn == Turn.AI)
-			return State.AIWin;
-		else if (decision && turn == Turn.Player)
+		if (decision && turn == Turn.AI) {
 			return State.PlayerWin;
+		} else if (decision && turn == Turn.Player) {
+			return State.AIWin;
+		}
 		else
 			return State.InProgress;
 	}
@@ -176,9 +177,19 @@ public class GameLogic : MonoBehaviour {
 		initializeField ();
 	
 	}
+
+	private void finishGame()
+	{
+		foreach (Button b in buttonField) {
+			b.enabled = false;
+		}
+		resultPanel.SetActive (true);
+	}
 	
 	// Update is called once per frame
 	void Update () {
+		
+		checkGame ();
 
 		if (currentTurn == Turn.AI) {
 			int i, j;
@@ -186,12 +197,42 @@ public class GameLogic : MonoBehaviour {
 
 			buttonField [unfold (i, j)].GetComponent<Image> ().sprite = blackCircle;
 			field [i, j] = Cell.Black;
+			checkGame ();
 			currentTurn = Turn.Player;
 		}
-		
+
 	}
 
+	private void checkGame()
+	{
+		var terminatior = terminateGame ();
+		if (terminatior == State.PlayerWin) {
+			finishGame ();
+			resultText.text = "Player";
+		} else if (terminatior == State.AIWin) {
+			finishGame ();
+			resultText.text = "AI";
+		} else if (terminatior == State.Draw) {
+			finishGame ();
+			resultText.text = "AI";
+		}
+	}
 
+	private State terminateGame()
+	{
+		var map = unfoldMap (field);
+		var dic = map.ToDictionary (p => p.Key.unfold (), p => p.Value);
+
+		if (decision (dic, makeMoveByTurn(currentTurn))) {//|| !map.Values.Contains (Cell.None);
+			if (currentTurn == Turn.AI)
+				return State.AIWin;
+			else
+				return State.PlayerWin;
+		} else if (!map.Values.Contains (Cell.None)) {
+			return State.Draw;
+		} else 
+			return State.InProgress;	
+	}
 }
 
 class Pair{
@@ -223,4 +264,4 @@ enum Cell {White, Black, None};
 
 enum Turn{Player, AI};
 
-enum State{PlayerWin, AIWin, InProgress}
+enum State{PlayerWin, AIWin, InProgress, Draw}
