@@ -20,6 +20,7 @@ public class GameLogic : MonoBehaviour {
 
 	private int unfold(int i, int j) // converts field[i,j] into buttonField[index]
 	{
+		//Debug.Log ((i * rows + j).ToString());
 		return i * rows + j;
 	}
 	private void initializeField()
@@ -29,12 +30,16 @@ public class GameLogic : MonoBehaviour {
 			for (int j = 0; j < columns; j++) {
 				field [i, j] = Cell.None;
 				int index = unfold (i, j);
+				int copy_i = i;
+				int copy_j = j;
 				buttonField [index].onClick.AddListener (() => 
 					{
 						if(currentTurn == Turn.Player)
 						{
+							//Debug.Log(copy_i.ToString() + " " + copy_j.ToString() + " " + index.ToString());
 							buttonField[index].GetComponent<Image>().sprite = whiteCircle;
-							field [i, j] = Cell.White;
+							if(field[copy_i, copy_j] == Cell.None)
+								field [copy_i, copy_j] = Cell.White;
 							currentTurn = Turn.AI;
 						}
 					});
@@ -114,7 +119,7 @@ public class GameLogic : MonoBehaviour {
 			
 			Move move;
 
-			var updatedBoard = board;
+			var updatedBoard = copyBoard(board);
 			updatedBoard [pair.x, pair.y] = makeMoveByTurn (player);
 			if (player == Turn.AI) {
 				move = minimax (updatedBoard, Turn.Player, pair);
@@ -136,6 +141,15 @@ public class GameLogic : MonoBehaviour {
 		}
 
 		return bestMove;
+	}
+
+	private Cell[,] copyBoard(Cell [,] board)
+	{
+		Cell[,] new_board = new Cell[rows, columns];
+		for (int i = 0; i < rows; i++)
+			for (int j = 0; j < columns; j++)
+				new_board [i, j] = board [i, j];
+		return new_board;
 	}
 
 	private Cell makeMoveByTurn(Turn turn)
